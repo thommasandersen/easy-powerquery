@@ -3,7 +3,7 @@ let
     // Start year of date dim table
     StartYear = Date.Year(DateTime.LocalNow()) - 5,
     // End year of date dim table
-    EndYear = Date.Year(DateTime.LocalNow()),
+    EndYear = Date.Year(DateTime.LocalNow()) + 1,
     DateList = {
         Number.From(#date(StartYear - 1, 01, 01))..Number.From(
             #date(EndYear, 12, 31)
