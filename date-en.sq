@@ -1,0 +1,135 @@
+-- Generate a list of dates from 5 years ago to 1 year in the future
+WITH DateList AS (
+    SELECT DATEADD(YEAR, -5, GETDATE()) AS DateValue
+    UNION ALL
+    SELECT DATEADD(DAY, 1, DateValue)
+    FROM DateList
+    WHERE DateValue < DATEADD(YEAR, 1, GETDATE())
+)
+SELECT
+    dl.DateValue AS Date,
+    CASE
+        WHEN DATEPART(WEEKDAY, dl.DateValue) IN (6, 7) THEN 'Weekend'
+        ELSE 'Workday'
+    END AS Workdays,
+    DATEPART(WEEK, dl.DateValue) AS Week,
+    DATEPART(ISO_WEEK, dl.DateValue) AS ISOWeek,
+    DATEPART(YEAR, dl.DateValue) AS Year,
+    DATEPART(ISO_WEEK, DATEADD(DAY, 26 - DATEPART(ISO_WEEK, dl.DateValue), dl.DateValue)) AS ISOYear,
+    -- Add more date-related calculations as needed
+
+    -- Calculate the quarter of the year
+    DATEPART(QUARTER, dl.DateValue) AS Quarter,
+
+    -- Calculate the month of the year
+    DATEPART(MONTH, dl.DateValue) AS Month,
+
+    -- Calculate the day of the year
+    DATEPART(DAYOFYEAR, dl.DateValue) AS DayOfYear,
+
+    -- Calculate the day of the week (Sunday = 1, Monday = 2, ..., Saturday = 7)
+    DATEPART(WEEKDAY, dl.DateValue) AS DayOfWeek,
+
+    -- Calculate the day of the month
+    DATEPART(DAY, dl.DateValue) AS DayOfMonth,
+
+    -- Combine year and quarter into a formatted string
+    CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) + RIGHT('0' + CAST(DATEPART(QUARTER, dl.DateValue) AS VARCHAR(2)), 2) AS YearQuarter,
+
+    -- Combine year and month into a formatted string
+    CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) + RIGHT('0' + CAST(DATEPART(MONTH, dl.DateValue) AS VARCHAR(2)), 2) AS YearMonth,
+
+    -- Combine year and week into a formatted string
+    CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) + RIGHT('0' + CAST(DATEPART(WEEK, dl.DateValue) AS VARCHAR(2)), 2) AS YearWeek,
+
+    -- Combine ISO year and ISO week into a formatted string
+    CAST(DATEPART(ISO_WEEK, dl.DateValue) AS VARCHAR(4)) + RIGHT('0' + CAST(DATEPART(ISO_WEEK, dl.DateValue) AS VARCHAR(2)), 2) AS ISOYearISOWeek,
+
+    -- Get the weekday name
+    DATENAME(WEEKDAY, dl.DateValue) AS Weekday,
+
+    -- Get the abbreviated month name (e.g., Jan, Feb)
+    LEFT(DATENAME(MONTH, dl.DateValue), 3) AS MonthShort,
+
+    -- Combine abbreviated month name and year (e.g., Jan 2023)
+    LEFT(DATENAME(MONTH, dl.DateValue), 3) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) AS MonthShortYear,
+
+    -- Get the full month name (e.g., January, February)
+    DATENAME(MONTH, dl.DateValue) AS MonthFull,
+
+    -- Combine full month name and year (e.g., January 2023)
+    DATENAME(MONTH, dl.DateValue) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) AS MonthFullYear,
+
+    -- Combine quarter and year into a formatted string (e.g., Q1 2023)
+    'Q' + RIGHT('0' + CAST(DATEPART(QUARTER, dl.DateValue) AS VARCHAR(2)), 2) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) AS QuarterYear,
+
+    -- Combine week and year into a formatted string (e.g., W01 2023)
+    'W' + RIGHT('0' + CAST(DATEPART(WEEK, dl.DateValue) AS VARCHAR(2)), 2) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4)) AS WeekYear,
+
+    -- Combine ISO week and ISO year into a formatted string (e.g., W01 2023)
+    'W' + RIGHT('0' + CAST(DATEPART(ISO_WEEK, dl.DateValue) AS VARCHAR(2)), 2) + ' ' + CAST(DATEPART(ISO_WEEK, DATEADD(DAY, 26 - DATEPART(ISO_WEEK, dl.DateValue), dl.DateValue)) AS VARCHAR(4)) AS ISOWeekISOYear,
+
+    -- Calculate the last date in the month
+    DATEADD(DAY, -1 * (DATEPART(DAY, dl.DateValue) - 1), DATEADD(MONTH, 1, dl.DateValue)) AS LastDateInMonth,
+
+    -- Determine if the date is on or before today
+    CASE
+        WHEN dl.DateValue <= GETDATE() THEN 1
+        ELSE 0
+    END AS UntilToday,
+
+    -- Determine if the date is before today
+    CASE
+        WHEN dl.DateValue < GETDATE() THEN 1
+        ELSE 0
+    END AS BeforeToday,
+
+    -- Calculate the number of days passed between the date and today
+    DATEDIFF(DAY, dl.DateValue, GETDATE()) AS PassedDays,
+
+    -- Calculate the number of years passed between the date and today
+    DATEPART(YEAR, GETDATE()) - DATEPART(YEAR, dl.DateValue) AS PassedYears,
+
+    -- Calculate the number of months passed between the date and today
+    DATEDIFF(MONTH, dl.DateValue, GETDATE()) + (DATEPART(MONTH, GETDATE()) - DATEPART(MONTH, dl.DateValue)) AS PassedMonths,
+
+    -- Calculate the number of quarters passed between the date and today
+    DATEDIFF(QUARTER, dl.DateValue, GETDATE()) + (DATEPART(QUARTER, GETDATE()) - DATEPART(QUARTER, dl.DateValue)) AS PassedQuarters,
+
+    -- Calculate the number of weeks passed between the date and today
+    DATEDIFF(DAY, DATEADD(DAY, -1 * DATEPART(WEEKDAY, dl.DateValue) + 1, dl.DateValue), DATEADD(DAY, -1 * DATEPART(WEEKDAY, GETDATE()) + 1, GETDATE())) / 7 AS PassedWeeks,
+
+    -- Determine if the date is today, yesterday, or tomorrow, or display the date as a string
+    CASE
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = 0 THEN 'Today'
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = 1 THEN 'Yesterday'
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = -1 THEN 'Tomorrow'
+        ELSE CAST(dl.DateValue AS VARCHAR(10))
+    END AS FilterDay,
+
+    -- Determine if the date is this month, last month, next month, or display the month and year
+    CASE
+        WHEN DATEDIFF(MONTH, dl.DateValue, GETDATE()) = 0 THEN 'This month'
+        WHEN DATEDIFF(MONTH, dl.DateValue, GETDATE()) = 1 THEN 'Last month'
+        WHEN DATEDIFF(MONTH, dl.DateValue, GETDATE()) = -1 THEN 'Next month'
+        ELSE LEFT(DATENAME(MONTH, dl.DateValue), 3) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4))
+    END AS FilterMonth,
+
+    -- Determine if the date is this week, last week, next week, or display the week and year
+    CASE
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = 0 THEN 'This week'
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = 7 THEN 'Last week'
+        WHEN DATEDIFF(DAY, dl.DateValue, GETDATE()) = -7 THEN 'Next week'
+        ELSE 'W' + RIGHT('0' + CAST(DATEPART(WEEK, dl.DateValue) AS VARCHAR(2)), 2) + ' ' + CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4))
+    END AS FilterWeek,
+
+    -- Determine if the date is this year, last year, next year, or display the year
+    CASE
+        WHEN DATEPART(YEAR, GETDATE()) - DATEPART(YEAR, dl.DateValue) = 0 THEN 'This year'
+        WHEN DATEPART(YEAR, GETDATE()) - DATEPART(YEAR, dl.DateValue) = 1 THEN 'Last year'
+        WHEN DATEPART(YEAR, GETDATE()) - DATEPART(YEAR, dl.DateValue) = -1 THEN 'Next year'
+        ELSE CAST(DATEPART(YEAR, dl.DateValue) AS VARCHAR(4))
+    END AS FilterYear
+FROM DateList dl
+ORDER BY dl.DateValue
+OPTION (MAXRECURSION 0); -- Set 0 for unlimited recursion, or specify a higher number as needed
