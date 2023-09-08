@@ -1,0 +1,80 @@
+CREATE FUNCTION CalculateEasterDate
+(
+    @Year INT
+)
+RETURNS DATE
+AS
+BEGIN
+    DECLARE @A INT, @B INT, @C INT, @D INT, @E INT, @F INT, @G INT, @H INT, @I INT, @K INT, @L INT
+    DECLARE @Month INT, @Day INT
+
+    SET @A = @Year % 19
+    SET @B = @Year / 100
+    SET @C = @Year % 100
+    SET @D = @B / 4
+    SET @E = @B % 4
+    SET @F = (@B + 8) / 25
+    SET @G = (@B - @F + 1) / 3
+    SET @H = (19 * @A + @B - @D - @G + 15) % 30
+    SET @I = @C / 4
+    SET @K = @C % 4
+    SET @L = (32 + 2 * @E + 2 * @I - @H - @K) % 7
+    SET @Month = (@H + @K - @L + 90) / 25
+    SET @Day = (@H + @K - @L + @Month * 19 + 19) % 32
+
+    RETURN DATEFROMPARTS(@Year, @Month, @Day)
+END;
+CREATE PROCEDURE CalculateHolidays
+    @StartDate DATE,
+    @EndDate DATE
+AS
+BEGIN
+    -- Create a temporary table to store holiday calculations
+    CREATE TABLE #HolidayTable (HolidayDate DATE, HolidayName VARCHAR(255))
+
+    -- Loop through the specified period and calculate holidays
+    DECLARE @CurrentDate DATE = @StartDate
+    WHILE @CurrentDate <= @EndDate
+    BEGIN
+        -- Calculate holidays for the current year
+        INSERT INTO #HolidayTable (HolidayDate, HolidayName)
+        VALUES
+            -- New Year's Day (January 1st)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 1, 1), 'New Year''s Day'),
+            -- Maundy Thursday (Easter - 3 days)
+            (DATEADD(DAY, -3, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'Maundy Thursday'),
+            -- Good Friday (Easter - 2 days)
+            (DATEADD(DAY, -2, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'Good Friday'),
+            -- Easter Sunday (calculated using the UDF)
+            (dbo.CalculateEasterDate(YEAR(@CurrentDate)), 'Easter Sunday'),
+            -- Easter Monday (Easter + 1 day)
+            (DATEADD(DAY, 1, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'Easter Monday'),
+            -- With Saturday (Easter + 39 days)
+            (DATEADD(DAY, 39, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'With Saturday'),
+            -- With Sunday (Easter + 49 days)
+            (DATEADD(DAY, 49, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'With Sunday'),
+            -- With Monday (Easter + 50 days)
+            (DATEADD(DAY, 50, dbo.CalculateEasterDate(YEAR(@CurrentDate))), 'With Monday'),
+            -- Labor Day (May 1st)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 5, 1), 'Labor Day'),
+            -- Norwegian Constitution Day (May 17th)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 5, 17), 'Norwegian Constitution Day'),
+            -- Christmas Eve (December 24th)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 12, 24), 'Christmas Eve'),
+            -- Christmas Day (December 25th)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 12, 25), 'Christmas Day'),
+            -- Boxing Day (December 26th)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 12, 26), 'Boxing Day'),
+            -- New Year's Eve (December 31st)
+            (DATEFROMPARTS(YEAR(@CurrentDate), 12, 31), 'New Year''s Eve')
+
+        -- Increment the current date by 1 year
+        SET @CurrentDate = DATEADD(YEAR, 1, @CurrentDate)
+    END
+
+    -- Select the results from the temporary table
+    SELECT * FROM #HolidayTable
+
+    -- Clean up the temporary table
+    DROP TABLE #HolidayTable
+END
